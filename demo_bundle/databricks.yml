@@ -1,0 +1,125 @@
+bunlde:
+  name: Databricks Bundle Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # Stage 1: Deploy to Staging
+  deploy-staging:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Only run on main branch pushes
+    environment: staging  # This creates a deployment environment
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Databricks CLI
+        run: |
+          pip install databricks-cli
+
+      - name: Configure Databricks CLI
+        run: |
+          echo "${{ secrets.DATABRICKS_TOKEN }}" | databricks configure --token --host https://adb-5384545987484957.17.azuredatabricks.net
+        env:
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+      - name: Debug Bundle Configuration
+        run: |
+          pwd
+          ls -la
+          cat databricks.yml
+          
+      - name: Validate Bundle
+
+        run: |
+          databricks bundle validate -t staging
+
+      - name: Deploy to Staging
+        run: |
+          databricks bundle deploy -t staging
+
+      - name: Run Tests in Staging (Optional)
+        run: |
+          # Add your test commands here
+          # databricks bundle run my_test_job -t staging
+          echo "Running staging tests..."
+
+      - name: Create Deployment Summary
+        run: |
+          echo "## Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Bundle: demo_bundle" >> $GITHUB_STEP_SUMMARY
+          echo "- Target: staging" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Deployed at: $(date)" >> $GITHUB_STEP_SUMMARY
+
+  # Stage 2: Deploy to Production (with approval)
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging  # Wait for staging deployment to complete
+    if: github.ref == 'refs/heads/main'
+    environment: 
+      name: production
+      # This URL will be shown in the approval interface
+      url: https://adb-5384545987484957.17.azuredatabricks.net
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Databricks CLI
+        run: |
+          pip install databricks-cli
+
+      - name: Configure Databricks CLI
+        run: |
+          echo "${{ secrets.DATABRICKS_TOKEN }}" | databricks configure --token --host https://adb-5384545987484957.17.azuredatabricks.net
+        env:
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+      - name: Validate Bundle
+        run: |
+          databricks bundle validate -t prod
+
+      - name: Deploy to Production
+        run: |
+          databricks bundle deploy -t prod
+
+      - name: Run Production Health Checks (Optional)
+        run: |
+          # Add your production health checks here
+          echo "Running production health checks..."
+
+      - name: Create Deployment Summary
+        run: |
+          echo "## Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Bundle: demo_bundle" >> $GITHUB_STEP_SUMMARY
+          echo "- Target: production" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Deployed at: $(date)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "🎉 Production deployment successful!"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "❌ Production deployment failed!"

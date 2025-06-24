@@ -1,0 +1,117 @@
+name: "Dev yaml"
+
+targets:
+  dev:
+    # Development workspace configuration
+    workspace:
+      host: https://your-dev-workspace.cloud.databricks.com
+      # Optional: specify different workspace for dev
+      # root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    
+    # Override bundle name for dev environment
+    # This helps avoid conflicts with production resources
+    bundle:
+      name: ${bundle.name}_${workspace.current_user.short_name}
+    
+    # Development-specific variables
+    variables:
+      # Database/catalog names for dev
+      catalog_name: ${workspace.current_user.short_name}_dev_catalog
+      schema_name: default
+      
+      # Environment-specific settings
+      environment: dev
+      log_level: DEBUG
+      
+      # Development data paths
+      data_path: /tmp/${workspace.current_user.userName}/data
+      checkpoint_path: /tmp/${workspace.current_user.userName}/checkpoints
+    
+    # Development compute configuration
+    resources:
+      jobs:
+        # Override job configurations for dev
+        my_job:
+          job_clusters:
+            - job_cluster_key: main
+              new_cluster:
+                spark_version: "13.3.x-scala2.12"
+                node_type_id: i3.xlarge  # Smaller instances for dev
+                num_workers: 1  # Fewer workers for cost efficiency
+                spark_conf:
+                  "spark.sql.adaptive.enabled": "true"
+                  "spark.sql.adaptive.coalescePartitions.enabled": "true"
+          
+          # Development-specific job settings
+          max_concurrent_runs: 1
+          timeout_seconds: 3600  # Shorter timeout for dev
+          
+          # Override notification settings
+          email_notifications:
+            on_failure: ["${workspace.current_user.userName}"]
+            on_success: []  # Disable success notifications in dev
+        
+        # You can define multiple jobs here
+        data_pipeline:
+          job_clusters:
+            - job_cluster_key: pipeline_cluster
+              new_cluster:
+                spark_version: "13.3.x-scala2.12"
+                node_type_id: i3.large
+                num_workers: 2
+      
+      # Development pipelines (if using Delta Live Tables)
+      pipelines:
+        my_pipeline:
+          development: true  # Enable development mode
+          channel: CURRENT   # Use current channel for latest features
+          
+          # Development-specific pipeline settings
+          configuration:
+            bundle.sourcePath: ${workspace.file_path}
+            catalog: ${var.catalog_name}
+            schema: ${var.schema_name}
+          
+          # Smaller compute for dev
+          clusters:
+            - label: default
+              node_type_id: i3.large
+              num_workers: 1
+      
+      # Model serving endpoints (if applicable)
+      model_serving_endpoints:
+        my_model_endpoint:
+          config:
+            served_models:
+              - name: my_model_dev
+                model_name: ${workspace.current_user.short_name}_my_model
+                model_version: "latest"
+                workload_type: CPU
+                workload_size: Small  # Smaller size for dev
+                scale_to_zero_enabled: true  # Cost optimization
+    
+    # Development permissions (more restrictive)
+    permissions:
+      - level: CAN_MANAGE
+        principal: ${workspace.current_user.userName}
+    
+    # Deployment configuration
+    run_as:
+      # Run as current user in dev (not service principal)
+      user_name: ${workspace.current_user.userName}
+    
+    # Sync configuration for development
+    sync:
+      # Exclude certain files/directories from sync
+      exclude:
+        - ".git"
+        - "*.pyc"
+        - "__pycache__"
+        - ".pytest_cache"
+        - "*.log"
+      
+      # Include specific patterns
+      include:
+        - "src/**"
+        - "notebooks/**"
+        - "tests/**"
