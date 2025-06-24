@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "config": {
+    "bundle": {
+      "git": {
+        "branch": "dev_jfrolick_928",
+        "origin_url": "https://dev.azure.com/AWFC/Data%20Platform/_git/Data%20Platform",
+        "commit": "0ab501956b624a12bbff926cd42b42a696cf2df7",
+        "bundle_root_path": ".bundle/mdp_bundle/dev/files"
+      }
+    },
+    "workspace": {
+      "file_path": "/Workspace/Users/japhy.frolik@agwestfc.com/MDP/.bundle/mdp_bundle/dev/files"
+    },
+    "resources": {
+      "jobs": {
+        "orchestration": {
+          "id": "564892041825347",
+          "relative_path": "resources/mdp_jobs.yml"
+        },
+        "run_batch": {
+          "id": "1102827680243818",
+          "relative_path": "resources/mdp_jobs.yml"
+        },
+        "testing_workflow": {
+          "id": "721536177563725",
+          "relative_path": "resources/mdp_jobs.yml"
+        }
+      }
+    }
+  }
+}
